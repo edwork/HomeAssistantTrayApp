@@ -5,7 +5,7 @@ Requirements:
 - CredentialManager module
 - Server address and API token stored in Windows Credential Manager
 
-Instructions:
+### Instructions:
 
 1. Download HomeAssistantTrayApp.ps1 to your computer from the link above.
 2. Install the CredentialManager module (`Install-Module CredentialManager` should do the trick)
@@ -25,10 +25,20 @@ New-StoredCredential -Target HomeAssistant -UserName [server address] -Password 
 
 5. Run the script! You can run from a Powershell prompt, or by right-clicking and selecting *Run*.
 
-Default behavior:
+### Default behavior:
 
-    .\HomeAssistantTrayApp.ps1
+    `.\HomeAssistantTrayApp.ps1`
 
-There are no parameters for this script. The server address and token should be stored in Credential Manager. All automations are retrieved when the script is initially run and stored until the application is closed from the context menu. They are displayed in alphabetical order, and you can refresh the list by relaunching the script (right-click the icon and select "Relaunch Tray App").
+### Choosing the Entity Type:
+You can Choose between Automations, Scenes, and Scripts
+    .\HomeAssistantTrayApp.ps1 -Type Automations
+    .\HomeAssistantTrayApp.ps1 -Type Scenes
+    .\HomeAssistantTrayApp.ps1 -Type Scripts
+
+### Filtering the Entity Names:
+Have a lot of entities? Only wish to show a subset? Give them a prefix and use the following filter. For this to work, your actual entity_id must be named script.something vs script.1551228185485. You can update your script names in your `scripts.yaml` file.
+    .\HomeAssistantTrayApp.ps1 -Type Scripts -Filter tray
+
+The server address and token should be stored in Credential Manager. All entities are retrieved when the script is initially run and stored until the application is closed from the context menu. They are displayed in alphabetical order, and you can refresh the list by relaunching the script (right-click the icon and select "Relaunch Tray App").
 
 Please let me know if you have any questions, comments, or suggestions!

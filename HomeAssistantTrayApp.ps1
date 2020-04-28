@@ -1,11 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Adds a HomeAssistant icon to the system tray that can trigger HomeAssistant automations.
+    Adds a HomeAssistant icon to the system tray that can trigger HomeAssistant automations, scenes, or scripts.
 
 .DESCRIPTION
     This script adds a HomeAssistant icon to the system tray. Clicking on this icon will open
         HomeAssistant in your default browser, while right-clicking on this icon will display
-        an alphabetized list of all active Automations in HomeAssistant when the script was run.
+        an alphabetized list of all active selected Entities in HomeAssistant when the script was run.
         To refresh the list, relaunch the script.
 
 .NOTES
@@ -20,15 +20,17 @@
 
 #>
 
+# Allow the user to select the entity type, defaults to Automation
+Param(
+  [string]$Type = 'Automation', # Automation, Scene, or Script
+  [string]$Filter = 'none' # Prefix Filter for selecting Entities
+)
+
 # Retrieve and parse server and token from Windows Credential Manager
 $homeAssistant = Get-StoredCredential -Target "HomeAssistant"
 $serverAddress = $homeAssistant.UserName
 $headers = @{"Authorization" = "Bearer $($homeAssistant.GetNetworkCredential().Password)"; "Content-Type" = "application/json"}
 
-# Retrieve enabled Automations from HomeAssistant
-$states = Invoke-RestMethod -Method GET -Uri "$serverAddress/api/states" -Headers $headers
-$automations = $states | Where-Object {$_.entity_id -like "automation.*" -and $_.state -eq "on"} | Sort-Object -Property @{e={$_.attributes.friendly_name}}
- 
 # Add assemblies
 foreach ($assembly in @('System.Windows.Forms','PresentationFramework','System.Drawing','WindowsFormsIntegration')){
     [System.Reflection.Assembly]::LoadWithPartialName($assembly) | Out-Null
@@ -51,18 +53,61 @@ $haTool_Icon.Visible = $true
 $contextmenu = New-Object System.Windows.Forms.ContextMenuStrip
 $haTool_Icon.ContextMenuStrip = $contextmenu
 
-foreach ($automation in $automations) {
-    $automationName = $automation.attributes.friendly_name
-    $automationID = $($automation.entity_id.split('.')[1])
-    $menuItem = $haTool_Icon.ContextMenuStrip.Items.Add($automationName)
-    #$menuItem.Text = $automationName
-    $menuItem.Tag = $automationID
-    $menuItem.add_Click({
-        Invoke-RestMethod -Method POST -Body (@{entity_id = "automation.$($this.Tag)"} | ConvertTo-Json) -Uri "$serverAddress/api/services/automation/trigger" -Headers $headers
-    })
+# Retrieve enabled Entities from HomeAssistant
+$states = Invoke-RestMethod -Method GET -Uri "$serverAddress/api/states" -Headers $headers
+If (($Type -eq 'Script') -or ($Type -eq 'Scripts')){
+    If ($Filter -ne "none"){
+        $scripts = $states | Where-Object {$_.entity_id -like "script." + $Filter + "*"} | Sort-Object -Property @{e={$_.attributes.friendly_name}}
+    }
+    Else{
+        $scripts = $states | Where-Object {$_.entity_id -like "script.*"} | Sort-Object -Property @{e={$_.attributes.friendly_name}}
+    }
+    foreach ($script in $scripts) {
+        $scriptName = $script.attributes.friendly_name
+        $scriptID = $($script.entity_id.split('.')[1])
+        $menuItem = $haTool_Icon.ContextMenuStrip.Items.Add($scriptName)
+        $menuItem.Tag = $scriptID
+        $menuItem.add_Click({
+            Invoke-RestMethod -Method POST -Body (@{entity_id = "script.$($this.Tag)"} | ConvertTo-Json) -Uri "$serverAddress/api/services/script/trigger" -Headers $headers
+        })
+    }
+}
+ElseIf (($Type -eq 'Scene') -or ($Type -eq 'Scenes')){
+    If ($Filter -ne "none"){
+        $scenes = $states | Where-Object {$_.entity_id -like "scene." + $Filter + "*"} | Sort-Object -Property @{e={$_.attributes.friendly_name}}
+    }
+    Else{
+        $scenes = $states | Where-Object {$_.entity_id -like "scene.*"} | Sort-Object -Property @{e={$_.attributes.friendly_name}}
+    }
+    foreach ($scene in $scenes) {
+        $sceneName = $scene.attributes.friendly_name
+        $sceneID = $($scene.entity_id.split('.')[1])
+        $menuItem = $haTool_Icon.ContextMenuStrip.Items.Add($sceneName)
+        $menuItem.Tag = $sceneID
+        $menuItem.add_Click({
+            Invoke-RestMethod -Method POST -Body (@{entity_id = "scene.$($this.Tag)"} | ConvertTo-Json) -Uri "$serverAddress/api/services/scene/trigger" -Headers $headers
+        })
+    }
+}
+Else {
+    If ($Filter -ne "none"){
+        $automations = $states | Where-Object {$_.entity_id -like "automation." + $Filter + "*" -and $_.state -eq "on"} | Sort-Object -Property @{e={$_.attributes.friendly_name}}
+    }
+    Else{
+        $automations = $states | Where-Object {$_.entity_id -like "automation.*" -and $_.state -eq "on"} | Sort-Object -Property @{e={$_.attributes.friendly_name}}
+    }
+    foreach ($automation in $automations) {
+        $automationName = $automation.attributes.friendly_name
+        $automationID = $($automation.entity_id.split('.')[1])
+        $menuItem = $haTool_Icon.ContextMenuStrip.Items.Add($automationName)
+        $menuItem.Tag = $automationID
+        $menuItem.add_Click({
+            Invoke-RestMethod -Method POST -Body (@{entity_id = "automation.$($this.Tag)"} | ConvertTo-Json) -Uri "$serverAddress/api/services/automation/trigger" -Headers $headers
+        })
+    }
 }
 
-# Add a divider to the menu to separate Automations from app meta functions
+# Add a divider to the menu to separate Entities from app meta functions
 $haTool_Icon.ContextMenuStrip.Items.Add("-")
 
 $restart = $haTool_Icon.ContextMenuStrip.Items.Add("Restart")
