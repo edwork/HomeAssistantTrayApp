@@ -27,7 +27,7 @@ New-StoredCredential -Target HomeAssistant -UserName [server address] -Password 
 
 ### Default behavior:
 
-    `.\HomeAssistantTrayApp.ps1`
+    .\HomeAssistantTrayApp.ps1
 
 ### Choosing the Entity Type:
 You can Choose between Automations, Scenes, and Scripts
